@@ -57,6 +57,32 @@ SpriteSheet<frames, rows, columns> load_spritesheet(SDL_Renderer* renderer, cons
 	return sheet;
 }
 
+template <unsigned int frames, unsigned int rows, unsigned int columns>
+void game_loop(SDL_Renderer * renderer, SpriteSheet<frames, rows, columns> runner){
+	SDL_Event event;
+	for (unsigned int frame =0;true;++frame){
+		while (SDL_PollEvent(&event) != 0){
+			if (event.type == SDL_QUIT) return;
+
+			if (event.type == SDL_KEYDOWN) {
+				switch (event.key.keysym.sym){
+					case SDLK_RIGHT:
+						std::cout << "right\n";
+						break;
+					case SDLK_LEFT:
+						std::cout << "left\n";
+						break;
+					case SDLK_q:
+						return;
+				}
+			}
+		}
+		SDL_RenderClear(renderer);
+		runner.Render(renderer, frame, nullptr);
+		SDL_RenderPresent(renderer);
+		SDL_Delay(1000/framerate);
+	}
+}
 
 int main(int argc, char *argv[])
 {
@@ -82,34 +108,10 @@ int main(int argc, char *argv[])
 
 	SDL_SetRenderDrawColor(renderer.get(), 0xFF, 0xFF, 0xFF, 0xFF);
 
-	SDL_Event event;
-
 	auto runner = load_spritesheet<7,3,3>(renderer.get(), "runner.png");
 	auto car = load_spritesheet<1,1,1>(renderer.get(), "car.png");
 
-
-	for (unsigned int frame =0;true;++frame){
-		while (SDL_PollEvent(&event) != 0){
-			if (event.type == SDL_QUIT) return 0;
-
-			if (event.type == SDL_KEYDOWN) {
-				switch (event.key.keysym.sym){
-					case SDLK_RIGHT:
-						std::cout << "right\n";
-						break;
-					case SDLK_LEFT:
-						std::cout << "left\n";
-						break;
-					case SDLK_q:
-						return 0;
-				}
-			}
-		}
-		SDL_RenderClear(renderer.get());
-		runner.Render(renderer.get(), frame, nullptr);
-		SDL_RenderPresent(renderer.get());
-		SDL_Delay(1000/framerate);
-	}
+	game_loop(renderer.get(), std::move(runner));
 
 	IMG_Quit();
 	SDL_Quit();
