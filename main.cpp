@@ -60,7 +60,8 @@ struct Character {
 	unsigned int current_frame = 0;
 	unsigned int frame_denominator;
 
-	Character(SpriteSheet&& sprite_sheet, Point p, Velocity v, unsigned int w, unsigned int h, unsigned int fps) : sprite_sheet(std::move(sprite_sheet)), position(p), velocity(v), width(w), height(h), frame_denominator(framerate/fps){}
+	Character(SpriteSheet&& sprite_sheet, Point p, Velocity v, unsigned int w, unsigned int h, unsigned int fps) :
+		sprite_sheet(std::move(sprite_sheet)), position(p), velocity(v), width(w), height(h), frame_denominator(framerate/fps){}
 
 	void update(){
 		position.x += velocity.x;
@@ -97,63 +98,78 @@ SpriteSheet load_spritesheet(SDL_Renderer* renderer,unsigned int frames, unsigne
 	return sheet;
 }
 
-void game_loop(SDL_Renderer * renderer, Character runner, Character car){
-	SDL_Event event;
+struct ButtonPresses {
+	bool quit = false;
 	bool right_pressed = false;
 	bool left_pressed = false;
 	bool up_pressed = false;
 	bool down_pressed = false;
-	for (unsigned int frame =0;true;++frame){
-		while (SDL_PollEvent(&event) != 0){
-			if (event.type == SDL_QUIT) return;
+};
 
-			if (event.type == SDL_KEYDOWN) {
-				switch (event.key.keysym.sym){
-					case SDLK_RIGHT:
-						right_pressed = true;
-						break;
-					case SDLK_LEFT:
-						left_pressed = true;
-						break;
-					case SDLK_UP:
-						up_pressed = true;
-						break;
-					case SDLK_DOWN:
-						down_pressed = true;
-						break;
-				}
-			} else if (event.type == SDL_KEYUP) {
-				switch (event.key.keysym.sym){
-					case SDLK_RIGHT:
-						right_pressed = false;
-						break;
-					case SDLK_LEFT:
-						left_pressed = false;
-						break;
-					case SDLK_UP:
-						up_pressed = false;
-						break;
-					case SDLK_DOWN:
-						down_pressed = false;
-						break;
-					case SDLK_q:
-						return;
-				}
+void read_buttons(ButtonPresses& buttons){
+	SDL_Event event;
+	while (SDL_PollEvent(&event) != 0){
+		if (event.type == SDL_QUIT) {
+			buttons.quit = true;
+			return;
+		}
+		if (event.type == SDL_KEYDOWN) {
+			switch (event.key.keysym.sym){
+				case SDLK_RIGHT:
+					buttons.right_pressed = true;
+					break;
+				case SDLK_LEFT:
+					buttons.left_pressed = true;
+					break;
+				case SDLK_UP:
+					buttons.up_pressed = true;
+					break;
+				case SDLK_DOWN:
+					buttons.down_pressed = true;
+					break;
+			}
+		} else if (event.type == SDL_KEYUP) {
+			switch (event.key.keysym.sym){
+				case SDLK_RIGHT:
+					buttons.right_pressed = false;
+					break;
+				case SDLK_LEFT:
+					buttons.left_pressed = false;
+					break;
+				case SDLK_UP:
+					buttons.up_pressed = false;
+					break;
+				case SDLK_DOWN:
+					buttons.down_pressed = false;
+					break;
+				case SDLK_q:
+					buttons.quit = true;
+					return;
 			}
 		}
+	}
 
+}
+
+void game_loop(SDL_Renderer * renderer, Character runner, Character car){
+	ButtonPresses buttons;
+	for (unsigned int frame =0;true;++frame){
+		read_buttons(buttons);
+		if (buttons.quit){
+			return;
+		}
 		// update
 		runner.velocity = {0,0};
-		if (right_pressed){
+		if (buttons.right_pressed){
 			runner.velocity.x +=10;
 		}
-		if (left_pressed){
+		if (buttons.left_pressed){
 			runner.velocity.x -=10;
 		}
-		if (up_pressed){
+		if (buttons.up_pressed){
 			runner.velocity.y -=10;
 		}
-		if (down_pressed){
+		if (buttons.down_pressed){
 			runner.velocity.y +=10;
 		}
 		runner.update();
