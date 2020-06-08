@@ -1,14 +1,54 @@
 #include "SDL.h"
 #include "SDL_image.h"
-#include "iostream"
 #include <memory>
 #include <vector>
+#include <cmath>
+#include <stdio.h>
+
 
 typedef std::unique_ptr<SDL_Texture, decltype(&SDL_DestroyTexture)> TexturePtr;
 
 const unsigned int framerate = 60;
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
+const double PI_4 = atan2(1,1);
+const Uint8 sand[4] = {0xFB,0xB6,0x52,0xFF};
+const Uint8 peach[4] = {0xFF,0xCE,0x9A,0xFF};
+const Uint8 light_blue[4] = {0x01,0xAC,0xD2,0xFF};
+const Uint8 dark_blue[4] = {0x00,0x90,0xC4,0xFF};
+
+TexturePtr generate_backgroud(SDL_Renderer* renderer, int width, int height){
+	SDL_Texture* texture = SDL_CreateTexture(
+			renderer,
+			SDL_PIXELFORMAT_RGBA32,
+			SDL_TEXTUREACCESS_STATIC,
+			width,
+			height
+			);
+	if (texture == nullptr){
+		printf("Error creating texture: %s\n", SDL_GetError());
+	}
+	Uint32* pixels = new Uint32[width*height];
+
+	for (int h=0; h < height; ++h){
+		Uint8 colour[4];
+		colour[0] = ((sand[0] * h)/height) + ((dark_blue[0] * (height - h))/height);
+		colour[1] = ((sand[1] * h)/height) + ((dark_blue[1] * (height - h))/height);
+		colour[2] = ((sand[2] * h)/height) + ((dark_blue[2] * (height - h))/height);
+		for (int w = 0; w < width; ++w){
+			pixels[h * width + w] = *(Uint32*)colour;
+		}
+	}
+
+	if (SDL_UpdateTexture(texture, nullptr, pixels, width * sizeof(Uint32)) != 0){
+		printf("Error updating texture: %s\n", SDL_GetError());
+	}
+	delete[] pixels;
+	return std::unique_ptr<SDL_Texture, decltype(&SDL_DestroyTexture)>(
+			texture,
+			&SDL_DestroyTexture
+			);
+}
 
 std::vector<SDL_Rect> generate_spritesheet_boxes(
 		unsigned int frames, unsigned int rows, unsigned int columns, unsigned int width, unsigned int height
@@ -53,28 +93,21 @@ struct Velocity {
 
 struct Character {
 	SpriteSheet sprite_sheet;
-	Point position;
+	SDL_Rect rect;
 	Velocity velocity;
-	unsigned int width;
-	unsigned int height;
 	unsigned int current_frame = 0;
 	unsigned int frame_denominator;
 
-	Character(SpriteSheet&& sprite_sheet, Point p, Velocity v, unsigned int w, unsigned int h, unsigned int fps) :
-		sprite_sheet(std::move(sprite_sheet)), position(p), velocity(v), width(w), height(h), frame_denominator(framerate/fps){}
+	Character(SpriteSheet&& sprite_sheet, Point p, Velocity v, int w, int h, unsigned int fps) :
+		sprite_sheet(std::move(sprite_sheet)), rect(SDL_Rect{p.x,p.y,w,h}), velocity(v), frame_denominator(framerate/fps){}
 
 	void update(){
-		position.x += velocity.x;
-		position.y += velocity.y;
+		rect.x += velocity.x;
+		rect.y += velocity.y;
 	}
 
 	void render(SDL_Renderer* renderer){
-		SDL_Rect dstrect;
-		dstrect.x = position.x;
-		dstrect.y = position.y;
-		dstrect.w = width;
-		dstrect.h = height;
-		sprite_sheet.render(renderer, current_frame/frame_denominator, &dstrect);
+		sprite_sheet.render(renderer, current_frame/frame_denominator, &rect);
 		++current_frame;
 	}
 };
@@ -83,7 +116,7 @@ SpriteSheet load_spritesheet(SDL_Renderer* renderer,unsigned int frames, unsigne
 	//load png
 	SDL_Surface* image = IMG_Load(path);
 	if (image == nullptr){
-		std::cout << "failed to load image at" << path << '\n';
+		printf("failed to load image at %s\n", path);
 		exit(1);
 	}
 	SpriteSheet sheet(
@@ -151,8 +184,12 @@ void read_buttons(ButtonPresses& buttons){
 
 }
 
-void game_loop(SDL_Renderer * renderer, Character runner, Character car){
+void game_loop(SDL_Renderer * renderer, TexturePtr background, Character runner, Character car){
+	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 	ButtonPresses buttons;
+	std::vector<SDL_Rect> collision_boxes;
+	collision_boxes.emplace_back(SDL_Rect{10,10,100,100});
+	collision_boxes.emplace_back(SDL_Rect{250,250,100,200});
 	for (unsigned int frame =0;true;++frame){
 		read_buttons(buttons);
 		if (buttons.quit){
@@ -173,15 +210,43 @@ void game_loop(SDL_Renderer * renderer, Character runner, Character car){
 			runner.velocity.y +=10;
 		}
 		runner.update();
-		if (car.position.x + (int)car.width < 0){
-			car.position.x = SCREEN_WIDTH;
+		if (runner.rect.y + runner.rect.h > SCREEN_HEIGHT){
+			runner.rect.y = SCREEN_HEIGHT - runner.rect.h;
+		}
+
+		if (car.rect.x + car.rect.w < 0){
+			car.rect.x = SCREEN_WIDTH;
 		}
 		car.update();
 
+		// colllision check
+		if (SDL_HasIntersection(&runner.rect, &car.rect) == SDL_TRUE){
+			auto angle = atan2(car.rect.y - runner.rect.y, car.rect.x - runner.rect.x);
+			printf("%lf", angle);
+			if (angle < PI_4){
+				printf(" DEAD");
+			} else {
+				runner.rect.y = car.rect.y - runner.rect.h;
+			}
+			printf("\n");
+		}
+
 		// render
-		SDL_RenderClear(renderer);
+		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
+		SDL_RenderCopy(renderer, background.get(), nullptr, nullptr);
 		runner.render(renderer);
 		car.render(renderer);
+
+		// collision boxes
+		SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0xFF);
+		for (auto box : collision_boxes){
+			SDL_RenderDrawRect(renderer, &box);
+		}
+		SDL_SetRenderDrawColor(renderer, 0xFF, 0x00, 0x00, 0x20);
+		for (auto box : collision_boxes){
+			SDL_RenderFillRect(renderer, &box);
+		}
+
 		SDL_RenderPresent(renderer);
 		SDL_Delay(1000/framerate);
 	}
@@ -209,15 +274,15 @@ int main(int argc, char *argv[])
 			&SDL_DestroyRenderer
 			);
 
-	SDL_SetRenderDrawColor(renderer.get(), 0xFF, 0x00, 0xFF, 0xFF);
 
 	auto runner = load_spritesheet(renderer.get(),7,3,3, "runner.png");
 	auto car = load_spritesheet(renderer.get(),1,1,1, "car.png");
 
 	game_loop(
 			renderer.get(),
+			generate_backgroud(renderer.get(), SCREEN_WIDTH, SCREEN_HEIGHT),
 			Character(std::move(runner),Point{0,0},Velocity{0,0},50,50,15),
-			Character(std::move(car), Point{SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100}, Velocity{-10, 0}, 80, 80, 1)
+			Character(std::move(car), Point{SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100}, Velocity{-5, 0}, 200, 80, 1)
 			);
 
 	IMG_Quit();
