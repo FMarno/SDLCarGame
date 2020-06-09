@@ -10,5 +10,6 @@ find_package(SDL2 REQUIRED)
 find_package(SDL2IMAGE REQUIRED)
 include_directories(${SDL2_INCLUDE_DIRS} ${SDL2IMAGE_INCLUDE_DIRS})
 
-add_executable(test main.cpp)
+add_executable(test main.cpp helpers.cpp SpriteSheet.cpp Character.cpp)
 target_link_libraries(test ${SDL2_LIBRARIES} ${SDL2IMAGE_LIBRARIES})
+target_compile_options(test PRIVATE -Werror -Wall -Wextra)
