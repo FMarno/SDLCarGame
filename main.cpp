@@ -96,8 +96,8 @@ int main(int, char*[])
 	game_loop(
 			renderer.get(),
 			generate_backgroud(renderer.get(), SCREEN_WIDTH, SCREEN_HEIGHT),
-			Character(std::move(runner),Point{0,0},Velocity{0,0},50,50,framerate, 15),
-			Character(std::move(car), Point{SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100}, Velocity{-5, 0}, 200, 80,framerate, 1)
+			Character(std::move(runner),Velocity{0,0},0,0,50,50,framerate, 15),
+			Character(std::move(car), Velocity{-5, 0}, SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100, 200, 80,framerate, 1)
 			);
 
 	IMG_Quit();
