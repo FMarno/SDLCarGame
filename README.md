@@ -3,12 +3,12 @@
 ## requirements
 
 ### tools
-c++ compiler
-cmake
+* c++ compiler
+* cmake
 
 ### libraries
-SDL2
-SDL2_IMAGE
+* SDL2
+* SDL2_IMAGE
 
 ## commands
 
