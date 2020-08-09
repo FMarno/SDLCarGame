@@ -24,37 +24,21 @@ void read_buttons(ButtonPresses& buttons){
 		}
 		if (event.type == SDL_KEYDOWN) {
 			switch (event.key.keysym.sym){
-				case SDLK_RIGHT:
-					buttons.right_pressed = true;
-					break;
-				case SDLK_LEFT:
-					buttons.left_pressed = true;
-					break;
-				case SDLK_UP:
-					buttons.up_pressed = true;
-					break;
-				case SDLK_DOWN:
-					buttons.down_pressed = true;
+				case SDLK_SPACE:
+					buttons.jump_pressed = true;
 					break;
 			}
 		} else if (event.type == SDL_KEYUP) {
 			switch (event.key.keysym.sym){
-				case SDLK_RIGHT:
-					buttons.right_pressed = false;
-					break;
-				case SDLK_LEFT:
-					buttons.left_pressed = false;
-					break;
-				case SDLK_UP:
-					buttons.up_pressed = false;
-					break;
-				case SDLK_DOWN:
-					buttons.down_pressed = false;
+				case SDLK_SPACE:
+					buttons.jump_pressed = false;
 					break;
 				case SDLK_q:
 					buttons.quit = true;
 					return;
 			}
+		} else if (event.type == SDL_FINGERDOWN){
+			buttons.jump_pressed = true;
 		}
 	}
 }

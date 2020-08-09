@@ -9,10 +9,7 @@ RendererPtr make_unique_renderer(SDL_Renderer* renderer);
 
 struct ButtonPresses {
 	bool quit = false;
-	bool right_pressed = false;
-	bool left_pressed = false;
-	bool up_pressed = false;
-	bool down_pressed = false;
+	bool jump_pressed = false;
 };
 
 void read_buttons(ButtonPresses& buttons);

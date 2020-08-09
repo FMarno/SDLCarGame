@@ -4,29 +4,25 @@
 #include <cmath>
 #include <stdio.h>
 
-const unsigned int framerate = 60;
+const int framerate = 60;
 const int SCREEN_WIDTH = 640;
 const int SCREEN_HEIGHT = 480;
 const double PI_4 = atan2(1,1);
 
+bool can_jump = false;
+
 void update_runner(Character& runner, ButtonPresses& buttons){
-	runner.velocity = {0,0};
-	if (buttons.right_pressed){
-		runner.velocity.x +=10;
-	}
-	if (buttons.left_pressed){
-		runner.velocity.x -=10;
-	}
-	if (buttons.up_pressed){
-		runner.velocity.y -=10;
-	}
-	if (buttons.down_pressed){
-		runner.velocity.y +=10;
+	if (buttons.jump_pressed && can_jump){
+		runner.velocity.y = -20;
+		can_jump = false;
+	} else {
+		runner.velocity.y += 1;
 	}
 	runner.rect.x += runner.velocity.x;
 	runner.rect.y += runner.velocity.y;
 	if (runner.rect.y + runner.rect.h > SCREEN_HEIGHT){
 		runner.rect.y = SCREEN_HEIGHT - runner.rect.h;
+		can_jump = true;
 	}
 }
 
@@ -38,7 +34,7 @@ void update_car(Character& car){
 	car.rect.y += car.velocity.y;
 }
 
-void game_loop(SDL_Renderer * renderer, TexturePtr background, Character runner, Character car){
+void game_loop(SDL_Renderer * renderer, SpriteSheet background, Character runner, Character car){
 	SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
 	ButtonPresses buttons;
 	std::vector<SDL_Rect> collision_boxes;
@@ -61,13 +57,15 @@ void game_loop(SDL_Renderer * renderer, TexturePtr background, Character runner,
 				printf(" DEAD");
 			} else {
 				runner.rect.y = car.rect.y - runner.rect.h;
+				runner.velocity.y = 0;
+				can_jump=true;
 			}
 			printf("\n");
 		}
 
 		// render
 		SDL_SetRenderDrawColor(renderer, 0xFF, 0xFF, 0xFF, 0xFF);
-		SDL_RenderCopy(renderer, background.get(), nullptr, nullptr);
+		background.render(renderer, 0,nullptr);
 		runner.render(renderer);
 		car.render(renderer);
 
@@ -90,13 +88,14 @@ int main(int, char*[])
 				0
 				));
 	auto renderer = make_unique_renderer(SDL_CreateRenderer(window.get(), -1, SDL_RENDERER_SOFTWARE));
-	auto runner = load_spritesheet(renderer.get(),7,3,3, "runner.png");
-	auto car = load_spritesheet(renderer.get(),1,1,1, "car.png");
+	auto runner = load_spritesheet(renderer.get(),7,3,3, "assets/runner.png");
+	auto car = load_spritesheet(renderer.get(),1,1,1, "assets/car.png");
+	auto background = load_spritesheet(renderer.get(), 1,1,1,"assets/background.png");
 
 	game_loop(
 			renderer.get(),
-			generate_backgroud(renderer.get(), SCREEN_WIDTH, SCREEN_HEIGHT),
-			Character(std::move(runner),Velocity{0,0},0,0,50,50,framerate, 15),
+			std::move(background),
+			Character(std::move(runner),Velocity{0,0},20,0,50,50,framerate, 15),
 			Character(std::move(car), Velocity{-5, 0}, SCREEN_WIDTH - 100, SCREEN_HEIGHT - 100, 200, 80,framerate, 1)
 			);
 
